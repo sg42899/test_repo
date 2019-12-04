@@ -1,0 +1,170 @@
+---
+title: "HW 6"
+author: "SDS348 Fall 2019"
+date: ""
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r global_options, include=FALSE}
+library(knitr)
+opts_chunk$set(fig.align="center", fig.height=5, message=FALSE, warning=FALSE, fig.width=8, tidy.opts=list(width.cutoff=60),tidy=TRUE)
+```
+
+##Sruti Gorantla, sg42899
+
+**This homework is due on Oct 27, 2019 at 11:59pm. Please submit as a pdf file on Canvas.**
+
+*For all questions, include the R commands/functions that you used to find your answer. Answers without supporting code will not receive credit.*
+
+> ### How to submit this assignment
+>All homework assignments will be completed using R Markdown. These `.Rmd` files consist of >text/syntax (formatted using Markdown) alongside embedded R code. 
+>When you have completed the assignment (by adding R code inside codeblocks and supporting text outside of the codeblocks), create your document as follows:
+
+> - Click the "Knit" button (above) to create an .html file
+> - Open the html file in your internet browser to view
+> - Go to `File > Print` and print your .html file to a .pdf
+> - (or knit to PDF)
+> - Upload the .pdf file to Canvas
+
+
+---
+
+### Question 1 (2 pts): The distribution of mosquito weight for the Aedes aegypti species is known to be log-normal (that is, weight is normally distributed if transformed with the natural log). Untransformed weights of 11 female and 9 male mosquitoes are given below (mg). Do the two sexes weigh the same on average? Make this data meet the normality assumption and perform the test in R. You can assume the equal-variances assumption was not met. 
+#independent t-test
+
+**Females:** 0.291, 0.208, 0.241, 0.437, 0.228, 0.256, 0.208, 0.234, 0.320, 0.340, 0.150
+**Males:**   0.185, 0.222, 0.149, 0.187, 0.191, 0.219, 0.132, 0.144, 0.140
+
+```{R}
+# your code here
+female_w <- c(0.291, 0.208, 0.241, 0.437, 0.228, 0.256, 0.208, 0.234, 0.320, 0.340, 0.150)
+male_w <-c(0.185, 0.222, 0.149, 0.187, 0.191, 0.219, 0.132, 0.144, 0.140)
+female_w_log <-log(female_w)
+male_w_log <-log(male_w)
+  
+qqnorm(male_w_log,main="QQ Plot of Male Weights")
+qqline(male_w_log,col="red")
+
+qqnorm(female_w_log,main="QQ Plot of Female Weights")
+qqline(female_w_log,col="red")
+
+t.test(female_w,male_w)
+
+```
+
+*Since the p-value is less than 0.05, there is a significant difference in weight between the sexes.*
+
+### Question 2 (3 pts): Build a dataframe with a column for weight, a column for logweight, and a column for sex. After setting the seed as specified below, perform a randomization test on the original weight data *and* on the log weight data. That is, for both, generate a distribution of 5000 mean differences on randomized data (either with a loop or using replicate). Compute and report two-tailed p-values in both cases. Do both randomization tests agree? Are your conclusions the same as they were above for the parametric t test? 
+
+```{R}
+sex<-c('F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'F', 'M', 'M', 'M', 'M', 'M', 'M', 'M', 'M', 'M')
+weight<-c(0.291, 0.208, 0.241, 0.437, 0.228, 0.256, 0.208, 0.234, 0.320, 0.340, 0.150,0.185, 0.222, 0.149, 0.187, 0.191, 0.219, 0.132, 0.144, 0.140)
+logweight<-log(weight)
+mosquito<-data.frame(sex,weight,logweight)
+
+set.seed(348)
+
+mean(mosquito[mosquito$sex=="F",]$weight)-mean(mosquito[mosquito$sex=="M",]$weight)
+mean(mosquito[mosquito$sex=="F",]$logweight)-mean(mosquito[mosquito$sex=="M",]$logweight)
+
+rand_dist<-vector()
+
+for(i in 1:5000){
+new<-data.frame(weight=sample(mosquito$weight),gender=mosquito$sex)
+rand_dist[i]<-mean(new[new$gender=="F",]$weight)-mean(new[new$gender=="M",]$weight)}
+mean(rand_dist>0.09048485)*2 
+
+rand_dist2<-vector()
+for(i in 1:5000){
+new<-data.frame(logweight=sample(mosquito$logweight),gender=mosquito$sex)
+rand_dist2[i]<-mean(new[new$gender=="F",]$logweight)-mean(new[new$gender=="M",]$logweight)}
+mean(rand_dist2>0.3972453)*2 
+```
+
+*The p-value for weight is 0.0028. The p-value is 0.0032 for the log of the weight. The p-values are less than the p-value from the t-test but they all show that the weights differ signficantly.*
+
+
+### Question 3 (3 pts): The original mean difference in mosquito weights between the two groups (F-M) was .0905 mg. Now you will create a 95% CI for this difference in means using bootstrapping. Resample from the original male mosquito data with replacement using sample(..., replace=T), resample from the original female mosquito data with replacement with sample(..., replace=T), take the mean difference of these samples, save it, and repeat this process 5000 times (either with a loop or using replicate). What is the mean of the resulting distribution? Report the 95% CI of this distribution by reporting the .025 and the 0.975 percentiles of mosquito weight differences. Interpret it in a sentence.
+
+
+```{R}
+means<-vector()
+for(i in 1:5000){
+samp<-sample(female_w,replace=T)-sample(male_w,replace=T)#take bootstrap sample
+means[i]<-mean(samp) #calculate and save the mean
+}
+mean(means)
+quantile(means,c(.025, .975))
+```
+
+*The mean is 0.0906. The 2.5% is 0.04427273 and the 97.5% is 0.14218182. We can be 95% sure that the true mean is in between these two values.*
+
+
+### Question 4 (3 pts): Use the dataset PlantGrowth to compute the SSB and SSW for a one-way ANOVA: Compute these manually (e.g., using dplyr functions to get group means) and then use them to compute an F statistic. Use `pf(..., df1=, df2=, lower.tail=F)` on the F statistic you generate to determine the p-value. Compare this to the output from summary(aov()) in R.`
+
+```{R}
+library(tidyverse)
+summary(aov(weight~sex,data=mosquito))
+SSW<- PlantGrowth%>%group_by(group)%>%summarize(SSW=sum((weight-mean(weight))^2))%>%
+  summarize(sum(SSW))%>%pull
+SSB<-PlantGrowth%>%mutate(mean=mean(weight))%>%group_by(group)%>%
+  mutate(groupmean=mean(weight))%>%
+    summarize(SSB=sum((mean-groupmean)^2))%>%summarize(sum(SSB))%>%pull
+f_stat <-(SSB/2)/(SSW/27)
+pf(4.846088,df1=2,df2=27,lower.tail = F)
+```
+
+*The p-value from the generated F-statistic is 0.0159. The p-value from ANOVA is 0.0049. This p-value from the generated F-statistic is greater than the p-value from ANOVA. *
+
+
+### Question 5 (4 pts): Using the Pottery dataset from last week's lab, compute a MANOVA testing whether at least one of thee five response variables (chemical compositions) differ by Site: use `manova(cbind(Y1,Y2,Y3...)~X,data=data)` and report the results in writing. Don't worry about assumptions (there are lots). If it is significant, which of the elements differ by site? Report full ANOVA results for each response variable. Use  For the ones that differ, which sites are different? That is, perform posthoc t-tests for all 5 ANOVAs using `pairwise.t.test(...,p.adj="none")`. You do not have to write anything up for the post hoc tests. How many hypothesis tests have you done in all? What is the probability that you have made at least one type I error (i.e., what is the overall type-I error rate)? What (boneferroni adjusted) significance level should you use if you want to keep the overall type I error rate at .05? Which of your post hoc tests that were significant before the adjustment are no longer significant?
+
+```{R}
+pots<-read.csv("http://www.nathanielwoodward.com/Pottery.csv")
+man1<-manova(cbind(Al,Fe,Mg,Ca,Na)~Site,data=pots)
+summary(man1)
+summary.aov(man1)
+pairwise.t.test(pots$Al,pots$Site, p.adj="none")
+pairwise.t.test(pots$Fe,pots$Site, p.adj="none")
+pairwise.t.test(pots$Mg,pots$Site, p.adj="none")
+pairwise.t.test(pots$Ca,pots$Site, p.adj="none")
+pairwise.t.test(pots$Na,pots$Site, p.adj="none")
+1-.95^36
+.05/36
+pairwise.t.test(pots$Al,pots$Site, p.adj="bonferroni")
+pairwise.t.test(pots$Fe,pots$Site, p.adj="bonferroni")
+pairwise.t.test(pots$Mg,pots$Site, p.adj="bonferroni")
+pairwise.t.test(pots$Ca,pots$Site, p.adj="bonferroni")
+pairwise.t.test(pots$Na,pots$Site, p.adj="bonferroni")
+```
+
+*All five elements differ significantly by site. 36 hypothesis tests were done; there's an 84.22% of a type-1 error so a boneferroni adjusted p-value of 0.001388889 should be used. The difference in Calcium between Caldicot and Llanedyrn was significant before but became not significant after adjusting for the boneferroni value.The difference in Sodium between Caldicot and Llanedyrn was significant before but became not significant after adjusting for the boneferroni value.*
+
+### Question 6 (2 points): Do a PERMANOVA on the Pottery dataset. Can use adonis() function in vegan `package`, but bonus point if you handcode the sampling distribution! Is your p-value larger or smaller than in the parametric MANOVA? Why might that be?
+
+```{R}
+library(vegan)
+dists<-pots%>%select(Al,Fe,Mg,Ca,Na)%>%dist()
+adonis(dists~Site,data=pots)
+```
+
+*The p-value is larger than the parametric MANOVA p-value; this is because PERMANOVA is more conservative than MANOVA.*
+
+
+### Question 7: (3 pts) Make the pottery dataset long by pivoting all of the element names into a column and all of the values into a column. Use that data to make a plot showing the average abundance of each element at each site (using stat="summary") by mapping Site to x, values to y, and then faceting by element (set scales='free'). Add bootstrapped 95% CI for each mean with `geom_errorbar(stat="summary",fun.data=mean_cl_boot)`, or by computing them manually.
+
+```{R}
+pots<-pots%>%pivot_longer(3:7,names_to="Element",values_to="Values")
+pots%>%ggplot(aes(x=Site,y=Values))+geom_bar(stat="summary")+facet_wrap(~Element,scales="free")+
+  geom_errorbar(stat="summary",fun.data=mean_cl_boot,width=.5)
+```
+
+
+```{R, echo=F}
+## DO NOT DELETE THIS BLOCK!
+sessionInfo()
+Sys.time()
+Sys.info()
+```
